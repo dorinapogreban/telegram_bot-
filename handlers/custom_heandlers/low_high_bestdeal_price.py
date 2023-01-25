@@ -1,13 +1,17 @@
+import time
+
 from loader import bot
 from telebot.types import CallbackQuery, Message, InputMediaPhoto
 from keyboards.reply.reply import photo_keyboard, city_choice, count_photo_keyboard
 from states.user_states import UserState
 from utils.api_hotels import get_destination, get_hotels
-from datetime import date
+from datetime import date, datetime
 from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 from loguru import logger
+from handlers.custom_heandlers.history import update_history_db
 
 
+@logger.catch()
 @bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
 def bot_command(message: Message) -> None:
     """
@@ -20,11 +24,13 @@ def bot_command(message: Message) -> None:
     logger.info(f'Пользователь {message.from_user.id}, ввел команду: {command}')
     with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
         data['command'] = command
+        data['command_date'] = datetime.now()
     bot.send_message(message.from_user.id, 'Получаем информацию...')
     bot.set_state(message.from_user.id, UserState.city, message.chat.id)
     bot.send_message(message.chat.id, 'Введите город для поиска:')
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.city)
 def get_city(message: Message) -> None:
     """
@@ -54,6 +60,7 @@ def get_city(message: Message) -> None:
         bot.send_message(message.chat.id, 'Уточните поиск:', reply_markup=city_choice(cities))
 
 
+@logger.catch()
 @bot.callback_query_handler(state=UserState.check_in, func=DetailedTelegramCalendar.func(calendar_id=1))
 def callback_calendar_1(call: CallbackQuery) -> None:
     """
@@ -80,6 +87,7 @@ def callback_calendar_1(call: CallbackQuery) -> None:
         bot.send_message(call.message.chat.id, f"Теперь выберите дату выезда {LSTEP[step]}", reply_markup=calendar)
 
 
+@logger.catch()
 @bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=2))
 def callback_calendar_2(call: CallbackQuery) -> None:
     """
@@ -117,6 +125,7 @@ def callback_calendar_2(call: CallbackQuery) -> None:
                                   reply_markup=calendar)
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.count_hotels)
 def get_count_hotels(message: Message) -> None:
     """
@@ -135,6 +144,7 @@ def get_count_hotels(message: Message) -> None:
                                           "Введите ещё раз количество отелей")
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.respons_foto)
 def get_result_foto(message: Message) -> None:
     """
@@ -155,6 +165,7 @@ def get_result_foto(message: Message) -> None:
         bot.send_message(message.chat.id, 'Введите минимальную цену за день в $>>>')
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.count_foto)
 def get_count_foto(message: Message) -> None:
     """
@@ -170,6 +181,7 @@ def get_count_foto(message: Message) -> None:
         bot.send_message(message.chat.id, 'Введите минимальную цену за день в $:')
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.price_min)
 def get_min_price(message: Message) -> None:
     """
@@ -192,6 +204,7 @@ def get_min_price(message: Message) -> None:
         bot.send_message(message.chat.id, 'Некорректный ввод, введите минимальную цену')
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.price_max)
 def get_max_price(message: Message) -> None:
     """
@@ -204,7 +217,8 @@ def get_max_price(message: Message) -> None:
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['price_max'] = int(message.text)
         if data['price_max'] > data['price_min']:
-            logger.info(f"Пользователь {message.from_user.id}, выброл максимальную цену за день в $: {data['price_max']}")
+            logger.info(f"Пользователь {message.from_user.id}, выброл максимальную цену за день в $:"
+                        f" {data['price_max']}")
             bot.send_message(message.chat.id, f"Вы выбрали диапазон цен {data['price_min']} - {data['price_max']} $")
             if data['command'] == '/bestdeal':
                 bot.set_state(message.from_user.id, UserState.distance, message.chat.id)
@@ -214,7 +228,10 @@ def get_max_price(message: Message) -> None:
                 bot.send_message(message.chat.id, 'Просим вас подождать, обрабатывается результат!')
                 hotels = get_hotels(data=data)
                 bot.send_message(message.chat.id, f"Данные об отелях:")
-                send_hotels(hotels=hotels, user_id=message.from_user.id)
+                send_hotels(hotels=hotels,
+                            user_id=message.from_user.id,
+                            username=message.from_user.full_name,
+                            data=data)
                 logger.info(f"Пользователь {message.from_user.id}, получил информацию по команде: {data['command']}")
         else:
             bot.send_message(message.chat.id, 'Максимальноя цена не может быть больше минимальной цене! '
@@ -223,6 +240,7 @@ def get_max_price(message: Message) -> None:
         bot.send_message(message.chat.id, 'Некорректный ввод, введите максимальную цену')
 
 
+@logger.catch()
 @bot.message_handler(state=UserState.distance)
 def get_distance(message: Message) -> None:
     """
@@ -242,13 +260,14 @@ def get_distance(message: Message) -> None:
         bot.send_message(message.chat.id, 'Просим вас подождать, обрабатывается результат!')
         hotels = get_hotels(data=data)
         bot.send_message(message.chat.id, f"Данных об отелях:")
-        send_hotels(hotels=hotels, user_id=message.from_user.id)
+        send_hotels(hotels=hotels, user_id=message.from_user.id, username=message.from_user.full_name, data=data)
         logger.info(f"Пользователь {message.from_user.id}, получил информацию по команде: {data['command']}")
     else:
         bot.send_message(message.chat.id, "Некорректный ввод, введите максимальное расстояние от центра (км):")
 
 
-def send_hotels(hotels: list, user_id: int) -> None:
+@logger.catch()
+def send_hotels(hotels: list, user_id: int, username: str, data: dict) -> None:
     """
     Отправка данных об отелях пользователю.
     :param hotels: список словарей с данными об отелях
@@ -256,7 +275,6 @@ def send_hotels(hotels: list, user_id: int) -> None:
     :return: None
     """
     for hotel in hotels:
-
         text = f"Название отеля: {hotel['name']}\n" \
                f"Aдрес: {hotel['address']}\n" \
                f"Цена: {hotel['price']}\n" \
@@ -272,9 +290,13 @@ def send_hotels(hotels: list, user_id: int) -> None:
                 photo_list.append(InputMediaPhoto(media=photo, caption=text, parse_mode='HTML'))
             bot.send_media_group(user_id, photo_list)
         bot.send_message(user_id, text)
-        # bot.send_message(user_id, text,
-        #                  parse_mode='HTML',
-        #                  disable_web_page_preview=True,
-        #                  )
-
-
+        time.sleep(0.5)
+        photo = ''
+        for ph in range(len(hotel['photo'])):
+            photo += str(hotel['photo'][ph]) + ' '
+        update_history_db(user_id=user_id,
+                          username=username,
+                          command=data['command'],
+                          command_date=data['command_date'],
+                          photo=photo,
+                          hotels=text)

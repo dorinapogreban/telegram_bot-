@@ -6,14 +6,14 @@ from typing import Optional, Literal, List, Dict, Final, Any
 from config_data.config import RAPID_API_KEY
 
 
-def request_to_api_hotel(querystring: dict, mode: Literal['des', 'hotel', 'foto', 'address'] = 'hotel') -> Optional:
+@logger.catch()
+def request_to_api_hotel(querystring: dict, mode: Literal['des', 'hotel', 'detail'] = 'hotel') -> Optional:
     """
     Базовая функция запроса к API Hotels
     :param mode: тип запрашиваемых данных:
                 'des' - подходящие местоположения
                 'hotel' - список отелей, значение по умолчанию
-                'foto' - фото отелей
-                'address' - адрес отелей
+                'detail' - информация про фото отелей и адрес отелей
     :param querystring: строка запроса
     :return: код ответа, если код ответа <Response [200]>, то запрос праведён успешно
     """
@@ -29,7 +29,7 @@ def request_to_api_hotel(querystring: dict, mode: Literal['des', 'hotel', 'foto'
         elif mode == 'des':
             endpoint = 'locations/v2/search'
             response = requests.get(url + endpoint, headers=headers, params=querystring, timeout=50)
-        elif mode == 'foto' or 'address':
+        elif mode == 'detail':
             endpoint = 'properties/v2/detail'
             response = requests.post(url + endpoint, headers=headers, json=querystring, timeout=50)
         # print(response.status_code, requests.codes.ok)
@@ -46,6 +46,7 @@ def request_to_api_hotel(querystring: dict, mode: Literal['des', 'hotel', 'foto'
         logger.debug(f'{error}')
 
 
+@logger.catch()
 def get_destination(location: str) -> Optional[Dict[str, str]]:
     """
     Функция получения от API Hotels местоположений, подходящих по названию.
@@ -68,6 +69,7 @@ def get_destination(location: str) -> Optional[Dict[str, str]]:
     return result
 
 
+@logger.catch()
 def get_hotels(data: dict) -> List[dict]:
     """
     Получает текущее состояние пользователя, формируется базовая строка запроса для получения списка отелей,
@@ -211,6 +213,7 @@ def get_hotels(data: dict) -> List[dict]:
     return result_hotels[:data['count_hotels']]
 
 
+@logger.catch()
 def get_detail(hotel_id: str) -> dict:
     """
     Функция получения от API Hotels данные об отеле.
@@ -224,7 +227,7 @@ def get_detail(hotel_id: str) -> dict:
         "locale": "ru_RU",
         "siteId": 300000001,
         "propertyId": str(hotel_id)}
-    response = request_to_api_hotel(querystring=querystring, mode='address')
+    response = request_to_api_hotel(querystring=querystring, mode='detail')
     try:
         response = json.loads(response.text)
     except json.decoder.JSONDecodeError as error:
