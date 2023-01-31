@@ -102,7 +102,7 @@ def get_hotels(data: dict) -> List[dict]:
                          "year": data['check_out'].year},
         "rooms": [{"adults": 1}],
         "resultsStartingIndex": 1,
-        "resultsSize": 25,
+        "resultsSize": data['count_hotels'],
         "sort": sort,
         "filters": {"price": {"max": data['price_max'], "min": data['price_min']}}}
 
@@ -170,8 +170,6 @@ def get_hotels(data: dict) -> List[dict]:
         :param count_photo: количество фотографии
         :return: возвращает список ссылок на фотографии
         """
-        if count_photo > 5:
-            count_photo = 5
         photo_res: list = list()
 
         for elem in id_hotel['data']['propertyInfo']['propertyGallery']['images']:

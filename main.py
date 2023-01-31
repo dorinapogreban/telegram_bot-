@@ -1,6 +1,7 @@
 from loader import bot
 from loguru import logger
-from handlers.custom_heandlers.history import create_table
+from database.db_utils import create_table
+import handlers
 
 
 if __name__ == '__main__':

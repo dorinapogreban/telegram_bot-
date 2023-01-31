@@ -2,7 +2,7 @@ from telebot.types import Message
 from config_data.config import DEFAULT_COMMANDS
 from loader import bot
 from loguru import logger
-from handlers.custom_heandlers.history import update_history_db
+from database.db_utils import update_history_db
 from datetime import datetime
 
 

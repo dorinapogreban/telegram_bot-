@@ -29,10 +29,11 @@ def count_photo_keyboard() -> ReplyKeyboardMarkup:
     Кнопка вариантов с количеством фотографий отеля.
     :return: Клавиатура с 4 кнопкоми.
     """
-    keyboard = ReplyKeyboardMarkup(True, True, row_width=4)
+    keyboard = ReplyKeyboardMarkup(True, True, row_width=5)
     button1 = KeyboardButton('1')
-    button2 = KeyboardButton('5')
-    button3 = KeyboardButton('10')
-    button4 = KeyboardButton('15')
-    keyboard.add(button1, button2, button3, button4)
+    button2 = KeyboardButton('2')
+    button3 = KeyboardButton('3')
+    button4 = KeyboardButton('4')
+    button5 = KeyboardButton('5')
+    keyboard.add(button1, button2, button3, button4, button5)
     return keyboard

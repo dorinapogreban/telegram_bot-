@@ -1,5 +1,4 @@
 import time
-
 from loader import bot
 from telebot.types import CallbackQuery, Message, InputMediaPhoto
 from keyboards.reply.reply import photo_keyboard, city_choice, count_photo_keyboard
@@ -8,7 +7,7 @@ from utils.api_hotels import get_destination, get_hotels
 from datetime import date, datetime
 from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 from loguru import logger
-from handlers.custom_heandlers.history import update_history_db
+from database.db_utils import update_history_db
 
 
 @logger.catch()
@@ -160,7 +159,7 @@ def get_result_foto(message: Message) -> None:
         logger.info(f'Пользователь {message.from_user.id}, не хочет получить фото отеля')
         bot.send_message(message.chat.id, 'Вы не хотите получить фото отеля.')
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['count_foto'] = 5  # количество фото по умолчанию
+            data['count_foto'] = 0  # количество фото по умолчанию
         bot.set_state(message.from_user.id, UserState.price_min, message.chat.id)
         bot.send_message(message.chat.id, 'Введите минимальную цену за день в $>>>')
 
@@ -173,7 +172,7 @@ def get_count_foto(message: Message) -> None:
     :param message: сообщение пользователя (количество фото отеляй).
     :return: None
     """
-    if int(message.text) == 1 or 5 or 10 or 15:
+    if int(message.text) == 1 or 2 or 3 or 4 or 5:
         logger.info(f'Пользователь {message.from_user.id}, хочет получить {int(message.text)} фото отеля')
         with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
             data['count_foto'] = int(message.text)
@@ -231,13 +230,15 @@ def get_max_price(message: Message) -> None:
                 send_hotels(hotels=hotels,
                             user_id=message.from_user.id,
                             username=message.from_user.full_name,
-                            data=data)
+                            data=data,
+                            chat_id=message.chat.id)
                 logger.info(f"Пользователь {message.from_user.id}, получил информацию по команде: {data['command']}")
         else:
             bot.send_message(message.chat.id, 'Максимальноя цена не может быть больше минимальной цене! '
                                               '\nВведите максимальную цену за день в $:')
     else:
         bot.send_message(message.chat.id, 'Некорректный ввод, введите максимальную цену')
+    # bot.delete_state(message.from_user.id, message.chat.id)  # удаляем сохраненные данные
 
 
 @logger.catch()
@@ -260,14 +261,19 @@ def get_distance(message: Message) -> None:
         bot.send_message(message.chat.id, 'Просим вас подождать, обрабатывается результат!')
         hotels = get_hotels(data=data)
         bot.send_message(message.chat.id, f"Данных об отелях:")
-        send_hotels(hotels=hotels, user_id=message.from_user.id, username=message.from_user.full_name, data=data)
+        send_hotels(hotels=hotels,
+                    user_id=message.from_user.id,
+                    username=message.from_user.full_name,
+                    data=data,
+                    chat_id=message.chat.id)
         logger.info(f"Пользователь {message.from_user.id}, получил информацию по команде: {data['command']}")
     else:
         bot.send_message(message.chat.id, "Некорректный ввод, введите максимальное расстояние от центра (км):")
+    # bot.delete_state(message.from_user.id, message.chat.id)  # удаляем сохраненные данные
 
 
 @logger.catch()
-def send_hotels(hotels: list, user_id: int, username: str, data: dict) -> None:
+def send_hotels(hotels: list, user_id: int, username: str, data: dict, chat_id: int) -> None:
     """
     Отправка данных об отелях пользователю.
     :param hotels: список словарей с данными об отелях
@@ -282,9 +288,7 @@ def send_hotels(hotels: list, user_id: int, username: str, data: dict) -> None:
                f"Широта: {hotel['latitude']}\n" \
                f"Долгота: {hotel['longitude']}\n" \
                f"URL-адрес: {hotel['url']}\n\n\n"
-        if not hotel['photo']:
-            bot.send_message(user_id, 'Фотографий не найдено!')
-        else:
+        if hotel['photo']:
             photo_list = []
             for photo in hotel['photo']:
                 photo_list.append(InputMediaPhoto(media=photo, caption=text, parse_mode='HTML'))
@@ -300,3 +304,4 @@ def send_hotels(hotels: list, user_id: int, username: str, data: dict) -> None:
                           command_date=data['command_date'],
                           photo=photo,
                           hotels=text)
+        bot.delete_state(user_id, chat_id)  # удаляем сохраненные данные
