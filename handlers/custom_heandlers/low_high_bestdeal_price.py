@@ -172,12 +172,13 @@ def get_count_foto(message: Message) -> None:
     :param message: сообщение пользователя (количество фото отеляй).
     :return: None
     """
-    if int(message.text) == 1 or 2 or 3 or 4 or 5:
-        logger.info(f'Пользователь {message.from_user.id}, хочет получить {int(message.text)} фото отеля')
-        with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-            data['count_foto'] = int(message.text)
-        bot.set_state(message.from_user.id, UserState.price_min, message.chat.id)
-        bot.send_message(message.chat.id, 'Введите минимальную цену за день в $:')
+    for num in range(1, 6):
+        if int(message.text) == num:
+            logger.info(f'Пользователь {message.from_user.id}, хочет получить {int(message.text)} фото отеля')
+            with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+                data['count_foto'] = int(message.text)
+            bot.set_state(message.from_user.id, UserState.price_min, message.chat.id)
+            bot.send_message(message.chat.id, 'Введите минимальную цену за день в $:')
 
 
 @logger.catch()
