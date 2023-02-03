@@ -2,6 +2,8 @@ from telebot.handler_backends import State, StatesGroup
 
 
 class UserState(StatesGroup):
+    """Класс UserState, Родитель: StatesGroup.
+    Это Класс - машина состояний пользователя где указано количество опросов сценария."""
     city = State()  # выбор города
     count_hotels = State()  # количество отелей
     check_in = State()  # выбор даты заезда
